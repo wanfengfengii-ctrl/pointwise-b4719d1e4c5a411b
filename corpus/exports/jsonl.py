@@ -7,6 +7,8 @@ JSONL_FIELDS = (
     "start", "end", "label", "text",
 )
 
+NFC_FIELDS = ("dataset_id", "kind", "inputs", "text", "origins", "annotations")
+
 
 def make_export_record(snapshot, row):
     document = snapshot["inputs"]["document"]
@@ -19,7 +21,14 @@ def make_export_record(snapshot, row):
     return dict(zip(JSONL_FIELDS, values))
 
 
+def make_nfc_export_record(snapshot):
+    return {field: snapshot[field] for field in NFC_FIELDS}
+
+
 def encode_jsonl(snapshot):
+    if snapshot["kind"] == "nfc_v1":
+        return json.dumps(make_nfc_export_record(snapshot), ensure_ascii=False,
+                          separators=(",", ":"), allow_nan=False) + "\n"
     lines = [
         json.dumps(make_export_record(snapshot, row), ensure_ascii=False,
                    separators=(",", ":"), allow_nan=False) + "\n"

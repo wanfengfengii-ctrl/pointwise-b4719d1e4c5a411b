@@ -45,6 +45,10 @@ class Corpus:
         return self.processing.build_raw(
             request_id, document_revision, annotation_revision)
 
+    def build_nfc(self, request_id, document_revision, annotation_revision):
+        return self.processing.build_nfc(
+            request_id, document_revision, annotation_revision)
+
     def read(self, dataset_id):
         return self.datasets.read(dataset_id)
 

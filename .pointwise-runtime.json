@@ -3,18 +3,14 @@
   "kind": "cli",
   "setup": [],
   "verify": [
-    "python3.11",
-    "-B",
-    "-m",
-    "unittest",
-    "discover",
-    "-s",
-    "tests",
-    "-v"
+    "sh",
+    "-c",
+    "python3.11 -B -m unittest discover -s tests -v && python3.11 -B nfc_examples.py --check && python3.11 -B nfc_audit.py"
   ],
   "demo": [
     "python3.11",
     "-B",
-    "examples.py"
+    "nfc_examples.py",
+    "--demo"
   ]
 }

@@ -59,6 +59,19 @@ class DatasetStore:
              canonical_payload_bytes(payload["inputs"]).decode("utf-8"),
              len(payload["rows"]), content_sha256))
 
+    def insert_nfc_dataset(self, dataset_id, payload, content_sha256):
+        self._require_transaction()
+        self.connection.execute(
+            "INSERT INTO datasets VALUES (?, ?, ?, ?, ?)",
+            (dataset_id, payload["kind"],
+             canonical_payload_bytes(payload["inputs"]).decode("utf-8"),
+             1, content_sha256))
+        self.connection.execute(
+            "INSERT INTO dataset_rows VALUES (?, ?, ?)",
+            (dataset_id, 0, canonical_payload_bytes({
+                "text": payload["text"], "origins": payload["origins"],
+                "annotations": payload["annotations"]}).decode("utf-8")))
+
     def insert_rows(self, dataset_id, rows):
         self._require_transaction()
         for ordinal, row in enumerate(rows):
@@ -86,6 +99,17 @@ class DatasetStore:
             "WHERE dataset_id=? ORDER BY ordinal", (dataset_id,)).fetchall()
         if [row[0] for row in rows] != list(range(metadata[2])):
             raise ValueError("stored dataset is incomplete")
-        payload = {"kind": metadata[0], "inputs": json.loads(metadata[1]),
-                   "rows": [json.loads(row[1]) for row in rows]}
+        kind = metadata[0]
+        if kind == "raw_v1":
+            payload = {"kind": kind, "inputs": json.loads(metadata[1]),
+                       "rows": [json.loads(row[1]) for row in rows]}
+        elif kind == "nfc_v1":
+            if metadata[2] != 1 or len(rows) != 1:
+                raise ValueError("stored nfc dataset is incomplete")
+            body = json.loads(rows[0][1])
+            payload = {"kind": kind, "inputs": json.loads(metadata[1]),
+                       "text": body["text"], "origins": body["origins"],
+                       "annotations": body["annotations"]}
+        else:
+            raise ValueError("unsupported stored dataset kind")
         return payload, metadata[3]

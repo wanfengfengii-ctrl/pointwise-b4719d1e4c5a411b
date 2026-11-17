@@ -10,13 +10,19 @@ JSONL and an auditable source manifest.
 ```sh
 python3.11 -B -m unittest discover -s tests -v
 python3.11 -B examples.py
+python3.11 -B nfc_examples.py --check
+python3.11 -B nfc_audit.py
+python3.11 -B nfc_examples.py --demo
 ```
 
 No installation or setup is needed. The demo reads the finite sample.json,
 uses a temporary database, builds overlapping annotations, updates the upstream
 heads, closes and reopens the database, and verifies the old release. Tests
 use memory databases or their own temporary directories and propagate failures
-through unittest's nonzero exit code.
+through unittest's nonzero exit code. `nfc_examples.py --fixtures` checks only
+the static NFC fixtures; `--check` runs the joint NFC contract checks;
+`nfc_audit.py` is an independent provenance audit that re-derives the
+normalization without importing production normalization code.
 
 ## Public API
 
@@ -36,6 +42,8 @@ with Corpus("corpus.sqlite") as corpus:
     output = corpus.export(dataset_id)
     print(output["jsonl"], end="")
     print(output["manifest"])
+    nfc_id = corpus.build_nfc("release-1-nfc", document, annotations)
+    nfc_snapshot = corpus.read(nfc_id)  # kind nfc_v1: text, origins, annotations
 ```
 
 Corpus(path=":memory:") owns one synchronous SQLite connection. close() and
@@ -88,6 +96,27 @@ Each annotation produces exactly one row, in submission order:
 annotation_id, start, end, label, text. The text equals the original
 text[start:end]. Empty annotation sets produce readable zero-row datasets.
 
+## NFC publication with provenance (nfc_v1)
+
+build_nfc(request_id, document, annotations) uses the same reference format,
+binding validation, exception types and unified request namespace as
+build_raw; see NFC.md for the full contract. The whole document is normalized
+once with the running interpreter's unicodedata version. Alongside text, the
+immutable snapshot stores origins: one ascending, deduplicated list of
+original codepoint indices per output codepoint. Decomposition inherits
+source, reordering preserves it and composition unions the participants,
+including blocking, composition exclusions and arithmetic Hangul rules.
+
+Every original annotation is projected by intersecting its [start, end)
+interval with each origins entry and compressing the selected output positions
+into maximal ascending half-open spans; IDs, original coordinates, labels and
+submission order are retained, spans may be discontinuous and annotations may
+share output characters. read returns kind="nfc_v1" with text, origins and
+annotations; export emits exactly one JSONL document record (even for empty
+text or empty annotation sets) with row_count 1. Raw and NFC requests share
+the request namespace: replaying a request with a different kind or identity
+raises ValueError and leaves the existing receipt intact.
+
 read(dataset_id) returns dataset_id, kind="raw_v1", inputs, rows and
 content_sha256. inputs contains:
 - document: document_id, revision, source_sha256, codepoint_count;
@@ -135,6 +164,8 @@ annotations/{api,records,sets,validation,storage}.py own label representation,
 codepoint validation and frozen annotation history.
 processing/{api,bindings,text,rows,runner}.py own fixed input resolution,
 raw text snapshots and row production.
+processing/{normalize,nfc_runner}.py own UAX #15 NFC with per-output-codepoint
+original-index provenance and maximal-span annotation projection.
 datasets/{api,catalog,publication,storage,integrity,receipts}.py own candidate
 checks, immutable snapshots and atomic request publication.
 exports/{api,reader,jsonl,manifest}.py own one-snapshot consumption and encoding.
@@ -150,7 +181,12 @@ boundaries, plus a deferred foreign-key failure at commit; it checks rollback,
 retry, uniqueness and reopening a file database.
 tests/test_exports.py independently parses JSONL and recomputes both digests,
 checks detached values and verifies historical results after reopening.
+tests/test_nfc.py checks provenance fixtures, whole-range normalization against
+unicodedata, projection, shared/discontinuous spans, read/export shapes, replay
+and kind conflicts, rollback/retry, detachment and frozen history after reopen.
+nfc_audit.py independently re-implements the transform and audits publication,
+blocking, exclusions, Hangul and reopen invariants.
 
-This version processes original character coordinates only. It provides no
-Unicode normalization, character-source mapping, coordinate migration or
-discontinuous annotation projection.
+The raw_v1 chain processes original character coordinates only. The nfc_v1
+chain adds Unicode normalization, character-source mapping, coordinate
+migration and discontinuous annotation projection as specified in NFC.md.

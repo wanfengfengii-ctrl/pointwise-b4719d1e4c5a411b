@@ -4,6 +4,6 @@ class ExportReader:
 
     def load(self, dataset_id):
         snapshot = self.datasets.read(dataset_id)
-        if snapshot["kind"] != "raw_v1":
+        if snapshot["kind"] not in ("raw_v1", "nfc_v1"):
             raise ValueError("unsupported export dataset kind")
         return snapshot
