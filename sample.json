@@ -1,0 +1,38 @@
+{
+  "document_id": "field-note",
+  "text": "﻿Å😀\r\nq̀̕",
+  "set_id": "manual",
+  "annotations": [
+    {
+      "id": "tail",
+      "start": 6,
+      "end": 9,
+      "label": {
+        "review": [
+          "人工\n复核"
+        ]
+      }
+    },
+    {
+      "id": "base",
+      "start": 1,
+      "end": 2,
+      "label": "base"
+    },
+    {
+      "id": "accent",
+      "start": 2,
+      "end": 3,
+      "label": "accent"
+    },
+    {
+      "id": "overlap",
+      "start": 1,
+      "end": 4,
+      "label": {
+        "kind": "原文",
+        "approved": true
+      }
+    }
+  ]
+}
